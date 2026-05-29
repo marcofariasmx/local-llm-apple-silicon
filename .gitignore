@@ -1,0 +1,19 @@
+# Model weights — never commit (21.5 GB+)
+*.gguf
+models/
+
+# Prebuilt llama.cpp binaries / libs — link to the upstream release instead
+llama-b*/
+*.dylib
+*.tar.gz
+llama-bin*
+
+# Logs and scratch
+*.log
+hello.py
+__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
+.opencode/
