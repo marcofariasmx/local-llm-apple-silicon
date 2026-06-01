@@ -185,6 +185,20 @@ Measured on the hardware above with [`bench/bench.py`](bench/bench.py), which dr
 3. **Prompt caching saves you.** `llama-server` caches the prompt prefix, so follow-up turns in the same session reuse it and respond much faster — the cold wait is mostly one-time per session.
 4. **Tool-calling: use llama.cpp + `--jinja`.** See [Why llama.cpp, not Ollama](#why-llamacpp-not-ollama).
 5. **Tune the GPU wired limit** (`iogpu.wired_limit_mb`) for headroom on long contexts.
+6. **Speculative decoding (MTP) is available — and GPU is where it pays off.** Qwen3.5/3.6 ship a built-in Multi-Token-Prediction head; mainline llama.cpp (build ≥ `b9200`) uses it via `--spec-type draft-mtp --spec-draft-n-max 2` with an MTP-bundled GGUF (e.g. `unsloth/…-MTP-GGUF`) — no separate draft model needed. It speeds **generation** (~1.4–2.2× reported on GPU), not prefill, so it won't fix the cold-TTFT caveat above, but it's a low-risk win for long/reasoning outputs. Caveat from a sister CPU-only edge box: on a 4-core Pi 5 it was a *net loss* (the per-step draft overhead outweighs the gain without a GPU and with short outputs) — so treat MTP as a **GPU/Metal lever, not a CPU one**.
+
+---
+
+## Running on less memory (the MoE RAM math)
+
+A 35B-A3B MoE is a fast *big* model, but "only 3B active" is often misread as "only needs ~3B of RAM." It doesn't. Two different counts govern two different things:
+
+- **Active params (`A3B`) → speed** — how much compute + memory bandwidth runs per token.
+- **Total params (`35B`) → RAM** — *all* experts must be resident, because any token can route to any expert and you can't predict which.
+
+So Qwen3.6-35B-A3B needs the full **~21.5 GB** for weights no matter how few activate per token — which is exactly why it wants a 32 GB unified-memory machine. **MoE = pay RAM for a big model, pay compute for a small one:** a great deal when RAM is spare (this M1 Pro), useless when RAM is the bottleneck.
+
+**On a smaller box (8–16 GB, or a Raspberry Pi):** pick a model whose *total* fits in RAM — a dense ≤4–8B, or a **small-total MoE with few active params** such as `LFM2-8B-A1B` (8.3B total / 1.5B active, ~5 GB at Q4) or `Granite-4.0-H-Tiny` (~7B / 1B). Those run fast *and* fit. (A 30B-A3B can be mmap'd "out of core" from fast NVMe at aggressive quant, but on an SD-card Pi that expert paging crawls.)
 
 ---
 
