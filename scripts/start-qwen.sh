@@ -1,21 +1,32 @@
 #!/bin/zsh
 # Launch Qwen3.6-35B-A3B (Q4_K_S) via llama-server, tuned for Apple M1 Pro / 32 GB.
-# Serves an OpenAI-compatible API at http://127.0.0.1:8080  (web UI at the same URL).
+# Serves an OpenAI-compatible API at http://<HOST>:8080  (web UI at the same URL).
 #
-# Adjust LLM_DIR / MODEL to wherever you extracted llama.cpp and downloaded the GGUF.
+# Defaults bind 0.0.0.0 and use a 64K context with a single sequence (-np 1) so a
+# sandboxed agent in a container can reach the model via host.docker.internal and
+# get the full window per request. 64K fits ~2.4 GB KV alongside the 21.5 GB model
+# on 32 GB. Override with env vars if you want loopback-only / a different context:
+#   LLAMA_HOST=127.0.0.1 LLAMA_CTX=32768 ./scripts/start-qwen.sh
+# Note: 0.0.0.0 exposes :8080 on your LAN — firewall it on untrusted networks.
+# (Do NOT swap in the MTP/speculative GGUF for agent use — it breaks the prompt
+#  cache and forces a full re-prefill every turn.)
 
 LLM_DIR="$HOME/llm"
 BIN="$LLM_DIR/llama-b9384"                                  # extracted llama.cpp release
 MODEL="$LLM_DIR/models/Qwen3.6-35B-A3B-Q4_K_S.gguf"         # ~21.5 GB GGUF
+
+HOST="${LLAMA_HOST:-0.0.0.0}"
+CTX="${LLAMA_CTX:-65536}"
 
 # dylibs live next to the binaries in the release tarball
 export DYLD_LIBRARY_PATH="$BIN:$DYLD_LIBRARY_PATH"
 
 "$BIN/llama-server" \
   -m "$MODEL" \
-  --host 127.0.0.1 --port 8080 \
+  --host "$HOST" --port 8080 \
   -ngl 99 \
-  -c 32768 \
+  -c "$CTX" \
+  -np 1 \
   -fa on \
   --cache-type-k q8_0 --cache-type-v q4_0 \
   -t 6 \
