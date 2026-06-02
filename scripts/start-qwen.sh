@@ -1,29 +1,41 @@
 #!/bin/zsh
-# Launch Qwen3.6-35B-A3B (Q4_K_S) via llama-server, tuned for Apple M1 Pro / 32 GB.
+# Launch Qwen3.6-27B (dense, Q4_K_S) via llama-server, tuned for Apple M1 Pro / 32 GB.
 # Serves an OpenAI-compatible API at http://<HOST>:8080  (web UI at the same URL).
+#
+# Was the 35B-A3B MoE; switched to the dense 27B after a controlled bake-off
+# (~/llm/sandbox-27b/): both reuse llama.cpp's hybrid checkpoint cache equally well
+# on a STABLE prefix (~100% restore — the agent now keeps its prompt prefix byte-
+# stable), but the 27B is ~15.9 GB vs the 35B's ~21.5 GB → ~5 GB less wired memory,
+# which ends the host swap. It's ~3-5x slower per token (dense: 27B active vs the
+# A3B's 3B) — an accepted trade for the RAM headroom + better reasoning quality.
 #
 # Defaults bind 0.0.0.0 and use a 64K context with a single sequence (-np 1) so a
 # sandboxed agent in a container can reach the model via host.docker.internal and
-# get the full window per request. 64K fits ~2.4 GB KV alongside the 21.5 GB model
-# on 32 GB. Override with env vars if you want loopback-only / a different context:
+# get the full window per request. Override with env vars for loopback-only / other ctx:
 #   LLAMA_HOST=127.0.0.1 LLAMA_CTX=32768 ./scripts/start-qwen.sh
 # Note: 0.0.0.0 exposes :8080 on your LAN — firewall it on untrusted networks.
 # (Do NOT swap in the MTP/speculative GGUF for agent use — it breaks the prompt
 #  cache and forces a full re-prefill every turn.)
-# --cache-ram 2048: cap the server-side prompt cache (default is 8192 MiB!). A
-#  single linear agent conversation only needs ~1-2 cached prompts (~250 MiB
-#  each); 2 GB is 8x headroom and keeps warm prefills, while reclaiming ~6 GB of
-#  host RAM. Don't set 0 — cache-idle-slots needs it, or every turn cold-prefills.
+# --cache-ram 2048: cap the server-side prompt cache (default is 8192 MiB!). It holds
+#  the per-turn checkpoints that make warm prefills possible; 2 GB is ample for a
+#  single linear conversation while reclaiming ~6 GB of host RAM. Don't set 0 —
+#  cache-idle-slots needs it, or every turn cold-prefills.
 
 LLM_DIR="$HOME/llm"
 BIN="$LLM_DIR/llama-b9466"                                  # extracted llama.cpp release (b9466: includes PR #22929, hybrid/recurrent prompt-cache fix)
-MODEL="$LLM_DIR/models/Qwen3.6-35B-A3B-Q4_K_S.gguf"         # ~21.5 GB GGUF
+MODEL="$LLM_DIR/models/Qwen3.6-27B-Q4_K_S.gguf"            # ~15.9 GB GGUF (dense 27B)
 
 HOST="${LLAMA_HOST:-0.0.0.0}"
-# 32K (was 64K): this hybrid model (Gated DeltaNet) has no working prompt cache in
-# llama.cpp, so every turn re-prefills the FULL context — a smaller window caps the
-# worst case and frees ~1.2 GB KV. The agent compacts aggressively well below this
-# anyway (SCA_COMPACT_TARGET_TOKENS). Override with LLAMA_CTX if needed.
+# 32K: the agent keeps its prompt prefix byte-stable, so llama.cpp's checkpoint cache
+# reuses across turns (only NEW tokens are prefilled most turns) — the window is usable
+# instead of being re-prefilled every turn. Chosen to MAXIMISE RAM headroom (the whole
+# point of moving to the smaller 27B): 32K is the most economical window that still
+# comfortably holds the ~16K compaction target + 4K response reserve + system/tools,
+# with margin. (64K CRASHES the dense 27B here — its worst-case compute buffer exceeds
+# the ~25 GB Metal budget; 48K starts at 18.6 GB. The dense 27B's per-pass compute
+# buffer, unlike the sparse 35B-A3B's, scales with context, so a big window is costly.)
+# A smaller window also caps the worst-case cold prefill on this slower model. Override
+# with LLAMA_CTX (must stay above SCA_COMPACT_TARGET_TOKENS + response_reserve).
 CTX="${LLAMA_CTX:-32768}"
 
 # dylibs live next to the binaries in the release tarball
