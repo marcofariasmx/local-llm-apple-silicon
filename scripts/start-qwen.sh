@@ -16,7 +16,7 @@
 #  host RAM. Don't set 0 — cache-idle-slots needs it, or every turn cold-prefills.
 
 LLM_DIR="$HOME/llm"
-BIN="$LLM_DIR/llama-b9384"                                  # extracted llama.cpp release
+BIN="$LLM_DIR/llama-b9466"                                  # extracted llama.cpp release (b9466: includes PR #22929, hybrid/recurrent prompt-cache fix)
 MODEL="$LLM_DIR/models/Qwen3.6-35B-A3B-Q4_K_S.gguf"         # ~21.5 GB GGUF
 
 HOST="${LLAMA_HOST:-0.0.0.0}"
