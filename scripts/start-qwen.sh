@@ -20,7 +20,11 @@ BIN="$LLM_DIR/llama-b9466"                                  # extracted llama.cp
 MODEL="$LLM_DIR/models/Qwen3.6-35B-A3B-Q4_K_S.gguf"         # ~21.5 GB GGUF
 
 HOST="${LLAMA_HOST:-0.0.0.0}"
-CTX="${LLAMA_CTX:-65536}"
+# 32K (was 64K): this hybrid model (Gated DeltaNet) has no working prompt cache in
+# llama.cpp, so every turn re-prefills the FULL context — a smaller window caps the
+# worst case and frees ~1.2 GB KV. The agent compacts aggressively well below this
+# anyway (SCA_COMPACT_TARGET_TOKENS). Override with LLAMA_CTX if needed.
+CTX="${LLAMA_CTX:-32768}"
 
 # dylibs live next to the binaries in the release tarball
 export DYLD_LIBRARY_PATH="$BIN:$DYLD_LIBRARY_PATH"
