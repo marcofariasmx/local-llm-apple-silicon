@@ -8,8 +8,13 @@
         "baseURL": "http://127.0.0.1:8080/v1"
       },
       "models": {
+        "Qwen3.6-27B-Q4_K_S.gguf": {
+          "name": "Qwen3.6-27B dense (local)",
+          "tools": true,
+          "reasoning": true
+        },
         "Qwen3.6-35B-A3B-Q4_K_S.gguf": {
-          "name": "Qwen3.6-35B-A3B (local)",
+          "name": "Qwen3.6-35B-A3B MoE (local)",
           "tools": true,
           "reasoning": true
         }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Demo of Qwen3.6-35B-A3B tool-calling against a local llama-server.
+"""Demo of Qwen3.6 tool-calling against a local llama-server.
 Defines 3 real tools, lets the model call them in a loop, prints everything.
 
 Usage:
@@ -7,13 +7,13 @@ Usage:
 
 Config via env:
   LLAMA_BASE   default http://127.0.0.1:8080
-  LLAMA_MODEL  default Qwen3.6-35B-A3B-Q4_K_S.gguf
+  LLAMA_MODEL  default Qwen3.6-27B-Q4_K_S.gguf
 """
 import json, sys, urllib.request, datetime, os
 
 BASE = os.environ.get("LLAMA_BASE", "http://127.0.0.1:8080")
 API = BASE.rstrip("/") + "/v1/chat/completions"
-MODEL = os.environ.get("LLAMA_MODEL", "Qwen3.6-35B-A3B-Q4_K_S.gguf")
+MODEL = os.environ.get("LLAMA_MODEL", "Qwen3.6-27B-Q4_K_S.gguf")
 
 # --- the actual tools the model is allowed to call -------------------------
 def get_time(_=None):

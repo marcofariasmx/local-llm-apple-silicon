@@ -28,7 +28,7 @@ import time
 import urllib.request
 
 BASE = os.environ.get("LLAMA_BASE", "http://127.0.0.1:8080")
-MODEL = os.environ.get("LLAMA_MODEL", "Qwen3.6-35B-A3B-Q4_K_S.gguf")
+MODEL = os.environ.get("LLAMA_MODEL", "Qwen3.6-27B-Q4_K_S.gguf")
 TIMEOUT = 1200
 
 # A fixed filler paragraph used to pad prompts to a target token depth.
